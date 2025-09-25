@@ -31,6 +31,9 @@ type DNS struct {
 	// DOT contains settings to configure the DoT
 	// server.
 	DoT DoT
+	// DNSCryptProxy contains settings to configure the
+	// DNSCrypt proxy service.
+	DNSCryptProxy DNSCryptProxy
 }
 
 func (d DNS) validate() (err error) {
@@ -47,6 +50,7 @@ func (d *DNS) Copy() (copied DNS) {
 		ServerAddress:  d.ServerAddress,
 		KeepNameserver: gosettings.CopyPointer(d.KeepNameserver),
 		DoT:            d.DoT.copy(),
+		DNSCryptProxy:  d.DNSCryptProxy.copy(),
 	}
 }
 
@@ -57,6 +61,7 @@ func (d *DNS) overrideWith(other DNS) {
 	d.ServerAddress = gosettings.OverrideWithValidator(d.ServerAddress, other.ServerAddress)
 	d.KeepNameserver = gosettings.OverrideWithPointer(d.KeepNameserver, other.KeepNameserver)
 	d.DoT.overrideWith(other.DoT)
+	d.DNSCryptProxy.overrideWith(other.DNSCryptProxy)
 }
 
 func (d *DNS) setDefaults() {
@@ -64,6 +69,7 @@ func (d *DNS) setDefaults() {
 	d.ServerAddress = gosettings.DefaultValidator(d.ServerAddress, localhost)
 	d.KeepNameserver = gosettings.DefaultPointer(d.KeepNameserver, false)
 	d.DoT.setDefaults()
+	d.DNSCryptProxy.setDefaults()
 }
 
 func (d DNS) String() string {
@@ -78,6 +84,7 @@ func (d DNS) toLinesNode() (node *gotree.Node) {
 	}
 	node.Appendf("DNS server address to use: %s", d.ServerAddress)
 	node.AppendNode(d.DoT.toLinesNode())
+	node.AppendNode(d.DNSCryptProxy.toLinesNode())
 	return node
 }
 
@@ -95,6 +102,11 @@ func (d *DNS) read(r *reader.Reader) (err error) {
 	err = d.DoT.read(r)
 	if err != nil {
 		return fmt.Errorf("DNS over TLS settings: %w", err)
+	}
+
+	err = d.DNSCryptProxy.read(r)
+	if err != nil {
+		return fmt.Errorf("DNSCrypt proxy settings: %w", err)
 	}
 
 	return nil

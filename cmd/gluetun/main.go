@@ -23,6 +23,7 @@ import (
 	"github.com/qdm12/gluetun/internal/configuration/sources/secrets"
 	"github.com/qdm12/gluetun/internal/constants"
 	"github.com/qdm12/gluetun/internal/dns"
+	"github.com/qdm12/gluetun/internal/dnscryptproxy"
 	"github.com/qdm12/gluetun/internal/firewall"
 	"github.com/qdm12/gluetun/internal/healthcheck"
 	"github.com/qdm12/gluetun/internal/httpproxy"
@@ -393,6 +394,19 @@ func _main(ctx context.Context, buildInfo models.BuildInformation,
 		return fmt.Errorf("creating DNS loop: %w", err)
 	}
 
+	// Initialize DNSCrypt-Proxy manager if enabled
+	dnscryptProxyMgr := dnscryptproxy.NewManager(dnsLogger)
+	if *allSettings.DNS.DNSCryptProxy.Enabled {
+		err = dnscryptProxyMgr.SetSettings(ctx, allSettings.DNS.DNSCryptProxy)
+		if err != nil {
+			return fmt.Errorf("setting DNSCrypt-Proxy settings: %w", err)
+		}
+		err = dnscryptProxyMgr.Start(ctx)
+		if err != nil {
+			return fmt.Errorf("starting DNSCrypt-Proxy: %w", err)
+		}
+	}
+
 	dnsHandler, dnsCtx, dnsDone := goshutdown.NewGoRoutineHandler(
 		"dns", goroutine.OptionTimeout(defaultShutdownTimeout))
 	// wait for dnsLooper.Restart or its ticker launched with RunRestartTicker
@@ -505,6 +519,14 @@ func _main(ctx context.Context, buildInfo models.BuildInformation,
 			err := stopper.Stop()
 			if err != nil {
 				logger.Error(fmt.Sprintf("stopping %s: %s", stopper, err))
+			}
+		}
+
+		// Stop DNSCrypt-Proxy if it's running
+		if dnscryptProxyMgr != nil && dnscryptProxyMgr.IsRunning() {
+			err = dnscryptProxyMgr.Stop()
+			if err != nil {
+				logger.Error(fmt.Sprintf("stopping DNSCrypt-Proxy: %s", err))
 			}
 		}
 	case err := <-portForwardRunError:

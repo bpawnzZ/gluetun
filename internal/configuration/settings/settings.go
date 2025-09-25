@@ -16,6 +16,7 @@ import (
 type Settings struct {
 	ControlServer ControlServer
 	DNS           DNS
+	DNSCryptProxy DNSCryptProxy
 	Firewall      Firewall
 	Health        Health
 	HTTPProxy     HTTPProxy
@@ -43,6 +44,7 @@ func (s *Settings) Validate(filterChoicesGetter FilterChoicesGetter, ipv6Support
 	nameToValidation := map[string]func() error{
 		"control server":  s.ControlServer.validate,
 		"dns":             s.DNS.validate,
+		"dnscrypt proxy":  s.DNSCryptProxy.validate,
 		"firewall":        s.Firewall.validate,
 		"health":          s.Health.Validate,
 		"http proxy":      s.HTTPProxy.validate,
@@ -73,6 +75,7 @@ func (s *Settings) copy() (copied Settings) {
 	return Settings{
 		ControlServer: s.ControlServer.copy(),
 		DNS:           s.DNS.Copy(),
+		DNSCryptProxy: s.DNSCryptProxy.copy(),
 		Firewall:      s.Firewall.copy(),
 		Health:        s.Health.copy(),
 		HTTPProxy:     s.HTTPProxy.copy(),
@@ -94,6 +97,7 @@ func (s *Settings) OverrideWith(other Settings,
 	patchedSettings := s.copy()
 	patchedSettings.ControlServer.overrideWith(other.ControlServer)
 	patchedSettings.DNS.overrideWith(other.DNS)
+	patchedSettings.DNSCryptProxy.overrideWith(other.DNSCryptProxy)
 	patchedSettings.Firewall.overrideWith(other.Firewall)
 	patchedSettings.Health.OverrideWith(other.Health)
 	patchedSettings.HTTPProxy.overrideWith(other.HTTPProxy)
@@ -117,6 +121,7 @@ func (s *Settings) OverrideWith(other Settings,
 func (s *Settings) SetDefaults() {
 	s.ControlServer.setDefaults()
 	s.DNS.setDefaults()
+	s.DNSCryptProxy.setDefaults()
 	s.Firewall.setDefaults()
 	s.Health.SetDefaults()
 	s.HTTPProxy.setDefaults()
@@ -140,6 +145,7 @@ func (s Settings) toLinesNode() (node *gotree.Node) {
 
 	node.AppendNode(s.VPN.toLinesNode())
 	node.AppendNode(s.DNS.toLinesNode())
+	node.AppendNode(s.DNSCryptProxy.toLinesNode())
 	node.AppendNode(s.Firewall.toLinesNode())
 	node.AppendNode(s.Log.toLinesNode())
 	node.AppendNode(s.Health.toLinesNode())
@@ -195,6 +201,7 @@ func (s *Settings) Read(r *reader.Reader, warner Warner) (err error) {
 	readFunctions := map[string]func(r *reader.Reader) error{
 		"control server": s.ControlServer.read,
 		"DNS":            s.DNS.read,
+		"dnscrypt proxy": s.DNSCryptProxy.read,
 		"firewall":       s.Firewall.read,
 		"health":         s.Health.Read,
 		"http proxy":     s.HTTPProxy.read,
